@@ -1,0 +1,329 @@
+%%%%%%%%%%%%%%%%%%%%%
+%% start of header %%
+%%%%%%%%%%%%%%%%%%%%%
+\documentclass[a4paper]{article}
+
+\usepackage{graphics,latexsym,geometry,amsmath,bibunits,makeidx,fancyhdr}
+\usepackage[authoryear,round]{natbib}
+\usepackage{graphicx}
+\usepackage{enumerate}
+\usepackage{hyperref}
+\usepackage{color} 
+
+\pagestyle{fancy}
+
+%% you should change the following: title, date, author
+\title{Seattle: 2002-2004} 
+\date{April 19}
+\author{Real Estate group}
+
+%%%%%%%%%%%%%%%%%%%%
+%%% end of header %%
+%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%
+%%% start document %%%
+%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+%This prints the header/title:
+\maketitle
+
+%enumerate makes a numbered list (remember to end it)
+\begin{enumerate}
+
+%% you can put whatever you want in brackets after item to label the problem
+\item[Begin]Reading The Data into R
+<<>>==
+rm(list = ls())
+setwd("C:/Users/vince/Desktop")
+seattle <- read.csv("HouseDataCollectionWithBallard.csv", header = T,
+                   na.strings = c("", "na")) 
+head(seattle)
+
+names(seattle)[names(seattle)=="Appraised2002"]<- "2002"
+names(seattle)[names(seattle)=="Appraised2003"]<- "2003"
+names(seattle)[names(seattle)=="Appraised2004"]<- "2004"
+names(seattle)[names(seattle)=="Appraised2012"]<- "2012"
+names(seattle)[names(seattle)=="Appraised2013"]<- "2013"
+names(seattle)[names(seattle)=="Appraised2014"]<- "2014"
+names(seattle)[names(seattle)=="Appraised2015"]<- "2015"
+names(seattle)[names(seattle)=="Appraised2016"]<- "2016"
+newseattle<- seattle[seattle$City == "Seattle", ]
+
+
+# ADding a mean column for values of a house in 3 years : 2002 to 2004
+meanprice<- rowMeans(newseattle[, 17:19])
+newseattle<- cbind(meanprice, newseattle)
+#sB is Seattle Before
+names(newseattle)
+sB<- newseattle[, c(1,4, 6,7,9)]
+names(sB)
+is.numeric(sB$meanprice)
+is.numeric(sB$SquareFootage)
+is.numeric(sB$Bedrooms)
+is.numeric(sB$Bathrooms)
+is.numeric(sB$YearBuilt)
+@
+Correlation 
+<<>>==
+cor(sB)
+plot(sB)
+@
+By looking at the matrix and the correlation plot, There is nothing to worry about.\\
+\item[Model]Looking for a model
+<<>>==
+rm(meanprice)
+attach(sB)
+names(sB)
+lmfit0 <- lm(meanprice ~ 1)
+lmfit1 <- lm(meanprice ~ SquareFootage)
+lmfit2 <- lm(meanprice ~ Bedrooms)
+lmfit3 <- lm(meanprice ~ Bathrooms)
+lmfit4 <- lm(meanprice ~ YearBuilt)
+lmfit5 <- lm(meanprice ~ SquareFootage + Bedrooms)
+lmfit6 <- lm(meanprice ~ SquareFootage + Bathrooms)
+lmfit7 <- lm(meanprice ~ SquareFootage + YearBuilt)
+lmfit8 <- lm(meanprice ~ Bedrooms + Bathrooms)
+lmfit9 <- lm(meanprice ~ Bedrooms + YearBuilt)
+lmfit10 <- lm(meanprice ~ Bathrooms + YearBuilt)
+lmfit11 <- lm(meanprice ~ SquareFootage + Bedrooms + Bathrooms)
+lmfit12 <- lm(meanprice ~ SquareFootage + Bedrooms + YearBuilt)
+lmfit13 <- lm(meanprice ~ SquareFootage + Bathrooms + YearBuilt)
+lmfit14 <- lm(meanprice ~ Bedrooms + Bathrooms + YearBuilt)
+lmfit15 <- lm(meanprice ~ SquareFootage + Bedrooms
+              + Bathrooms + YearBuilt)
+allfits <- list(lmfit0, lmfit1, lmfit2, lmfit3, lmfit4, lmfit5,
+                lmfit6, lmfit7, lmfit8, lmfit9, lmfit10, lmfit11,
+                lmfit12, lmfit13, lmfit14, lmfit15)
+
+aics <- unlist(lapply(allfits, AIC))
+bics <- unlist(lapply(allfits, BIC))
+
+ps <- unlist(lapply(allfits, function(x){length(x$coef)}))
+
+library(DAAG)
+presss <- unlist(lapply(allfits, press))
+@
+
+<<>>==
+library(leaps)  
+# R2 R2a cp
+leaps_sB_r2 <- leaps(sB[, c("SquareFootage", "Bedrooms",
+                            "Bathrooms", "YearBuilt")],
+                     sB[, "meanprice"], method = "r2")
+leaps_sB_r2
+@
+By Looking at the $R^2$ we say that a possible model is\\
+$\hat{y}$ = $\beta_0$ + $\beta_1X_1$ + $\beta_2X_2$ + $\beta_3X_3$\\
+Where $X_1$ is SquareFottage, $X_2$ is Bedrooms, and $X_3$ is Bathrooms\\
+<<>>==
+leaps_sB_r2a <- leaps(sB[, c("SquareFootage", "Bedrooms",
+                            "Bathrooms", "YearBuilt")],
+                     sB[, "meanprice"], method = "adjr2")
+leaps_sB_r2a
+
+@
+The adjusted $R^2$ gives the same model as $R^2$.\\
+$\hat{y}$ = $\beta_0$ + $\beta_1X_1$ + $\beta_2X_2$ + $\beta_3X_3$\\
+Where $X_1$ is SquareFottage, $X_2$ is Bedrooms, and $X_3$ is Bathrooms\\
+<<>>==
+leaps_sB_cp <- leaps(sB[, c("SquareFootage", "Bedrooms",
+                            "Bathrooms", "YearBuilt")],
+                     sB[, "meanprice"])
+leaps_sB_cp
+@
+The CP also gives tha same model at $R_a^2$ and $R^2$\\
+$\hat{y}$ = $\beta_0$ + $\beta_1X_1$ + $\beta_2X_2$ + $\beta_3X_3$\\
+Where $X_1$ is SquareFottage, $X_2$ is Bedrooms, and $X_3$ is Bathrooms\\
+\item[Plots]
+<<>>==
+#max/min
+max_r2 <- tapply(leaps_sB_r2$r2, factor(leaps_sB_r2$size), FUN = max)
+max_r2a <- tapply(leaps_sB_r2a$adjr2, factor(leaps_sB_r2a$size), FUN = max)
+
+min_cp <- tapply(leaps_sB_cp$Cp, factor(leaps_sB_cp$size), FUN = min)
+min_aic <- tapply(aics, factor(ps), FUN = min)
+min_bic <- tapply(bics, factor(ps), FUN = min)
+min_press <- tapply(presss, factor(ps), FUN = min)
+
+par(mfrow = c(3,2))
+
+plot(leaps_sB_r2$size, leaps_sB_r2$r2, xlab = "p", ylab = "R2")
+lines(unique(leaps_sB_r2$size), max_r2)
+
+plot(leaps_sB_r2a$size, leaps_sB_r2a$adjr2, xlab = "p", ylab = "R2_adj")
+lines(unique(leaps_sB_r2a$size), max_r2a)
+
+plot(leaps_sB_cp$size, leaps_sB_cp$Cp, xlab = "p", ylab = "CP")
+lines(unique(leaps_sB_cp$size), min_cp)
+
+plot(ps, aics, xlab = "p", ylab = "AIC")
+lines(unique(ps), min_aic)
+
+plot(ps, bics, xlab = "p", ylab = "BIC")
+lines(unique(ps), min_bic)
+
+plot(ps, presss, xlab = "p", ylab = "PRESS")
+lines(unique(ps), min_press)
+
+@
+The coefficient of determionation favors a model with 3 predictor variables\\
+The adjusted coefficient of determination favors a model with 3 predictor variables\\
+Mallow's criterian tells us that our model should have 3 predictor variables\\
+Akaike's criterion tells us that a model with 3 predictor variables is favored.\\
+The Schwarz' Bayesian criterion suggest a model with 2 predictor variables\\
+The Prediction sum of squares also suggest that we need a model with 2 predictor variables.\\
+we can conclude that a model with 3 predictors is faverable\\
+\item[Selecting Model]
+We wil use backwards stepwise
+<<>>==
+step(lm(meanprice ~ SquareFootage + Bedrooms + Bathrooms + YearBuilt),
+     direction = "both")
+@
+This procedure selected the model\\
+$\hat{y}$ = $\beta_0$ + $\beta_1X_1$ + $\beta_2X_2$ + $\beta_3X_3$\\
+Where $X_1$ is SquareFottage, $X_2$ is Bedrooms, and $X_3$ is Bathrooms\\
+We will use backwards elimination
+<<>>==
+step(lm(meanprice ~ SquareFootage + Bedrooms + Bathrooms + YearBuilt),
+     direction = "backward")
+@
+The results were the same as the backwards stepwise\\
+$\hat{y}$ = $\beta_0$ + $\beta_1X_1$ + $\beta_2X_2$ + $\beta_3X_3$\\
+Where $X_1$ is SquareFottage, $X_2$ is Bedrooms, and $X_3$ is Bathrooms\\
+Now we try forward stepwise
+<<>>==
+step(lm(meanprice ~ 1, data = sB),
+     scope = meanprice ~ SquareFootage + Bedrooms + Bathrooms + YearBuilt,
+     direction = "both")
+@
+Forward stepwise gave the same result as backwards elimination and backwards stepwise\\
+$\hat{y}$ = $\beta_0$ + $\beta_1X_1$ + $\beta_2X_2$ + $\beta_3X_3$\\
+Where $X_1$ is SquareFottage, $X_2$ is Bedrooms, and $X_3$ is Bathrooms\\
+The final procedure is Forward selection 
+<<>>==
+step(lm(meanprice ~ 1, data = sB),
+     scope = meanprice ~ SquareFootage + Bedrooms + Bathrooms + YearBuilt,
+     direction = "forward")
+@
+Forward selection gave the same result as forward stepwise, backwards elimination and backwards stepwise\\
+$\hat{y}$ = $\beta_0$ + $\beta_1X_1$ + $\beta_2X_2$ + $\beta_3X_3$\\
+Where $X_1$ is SquareFottage, $X_2$ is Bedrooms, and $X_3$ is Bathrooms\\
+we can conlude that our final model is \\
+$\hat{y}$ = $\beta_0$ + $\beta_1X_1$ + $\beta_2X_2$ + $\beta_3X_3$\\
+Where $X_1$ is SquareFottage, $X_2$ is Bedrooms, and $X_3$ is Bathrooms\\
+\item[Diagnostics]
+<<>>==
+seattlelm <- lm(meanprice ~ SquareFootage + Bedrooms + Bathrooms)
+Res1 <- seattlelm$residuals
+Fit1 <- seattlelm$fitted.values
+par(mfrow = c(2,2))
+plot(seattlelm)
+@
+The fittes vs residual plot appears to be normal and the QQ plot follows a sraight line for the most part.\\
+Outlier Check
+<<>>===
+par(mfrow = c(1,1))
+boxplot(meanprice)
+boxplot(Res1)
+
+@
+The box plot of the predictor tells us that there are a few outliers.\\
+The boxplot of the residuls looks normal. So We assume normality.\\
+\item[Outliers]
+<<>>==
+# The Hat Matrix
+hii <- hatvalues(seattlelm)
+round(hii, 3)
+
+sei2 <- anova(seattlelm)["Residuals", "Mean Sq"] * (1 - hii)
+sei2
+@
+We notice that the residuals do not have constant varience
+<<>>==
+round(rstudent(seattlelm), 3)
+
+@
+We note that row 49 is an outlier and maybe the rows 44,37,18\\
+Identifieng outlying X Observations: Hat Matrix Leverage
+<<>>==
+length(sB$meanprice)
+2 * sum(hii) / 49 
+
+round(sort(hii), 3)
+hist(hii, col = c("orange", "blue"))
+@
+We notice that rows 31, 9 and 37 might be outliers\\
+Taking a look at rows 9, 31-37 To compare the data and research the Outliers\\
+<<>>==
+sB[c(9, 31:37), 2:4]
+@
+By looking at row 37 I noticed that the bathroom count is a little high for a 1560 square foot house. After research was conducted, I found that the house only has 2.5 Bathrooms.\\
+By looking at row 31, I noticed that the house actualy has 3 bedrooms instead of 4 and that it has 2 bathrooms instead of 1.75.\\
+By looking at row 9 We can see that the house actually has 2040 Squarefootage instead of 2980. A Big Difrence.\\
+<<>>==
+par(mfrow = c(2,2))
+plot(SquareFootage, meanprice)
+plot(Bedrooms, meanprice)
+plot(Bathrooms, meanprice)
+sB[c(9, 31:37), 1:4]
+@
+DFFits
+<<>>==
+round(sort(abs(dffits(seattlelm))), 3)
+
+@
+It Looks like row 49 and row 37 are Outliers\\
+Cooks
+<<>>==
+round(sort(cooks.distance(seattlelm)), 5)
+
+
+@
+The Same is said for cooks distance. Rows 49 and 37 are possible outliers\\
+DFBETAS
+<<>>==
+
+absdfbetas <- abs(dfbetas(seattlelm))
+
+for(i in 2:4) {
+  print(round(head(absdfbetas[order(absdfbetas[,i], decreasing = T),]), 3))
+}
+
+@
+Row 37 and 49 still stand out.\\
+Fixing the data
+<<>>==
+# changing the bathrrom cont for row 37
+sB$Bathrooms[37] <- 2.5
+
+# changing the square fottage for row 9
+sB$SquareFootage[9] <- 2040
+
+# changing the bedroom size in row 31
+sB$Bedrooms[31] <- 3
+@
+\item[Final Model]
+<<>>==
+detach(sB)
+attach(sB)
+FinalLM <- lm(meanprice ~ SquareFootage + Bedrooms + Bathrooms, data = sB)
+par(mfrow = c(1,1))
+plot(FinalLM)
+summary(FinalLM)
+FinalLM
+@
+The final model is\\
+Y = 74450.64 + 52.53*SqrFootage + 30905.03*Bed + 35466.93*Bath\\
+%% end the enumerated list
+\end{enumerate}
+%% end the entire document - this should always be the last line!
+\end{document}
+
+%%%%%%%%%%%%%%%%%%%%%%
+%%%% end document %%%%
+%%%%%%%%%%%%%%%%%%%%%%
+
+
